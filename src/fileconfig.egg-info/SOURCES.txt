@@ -1,0 +1,8 @@
+README.md
+pyproject.toml
+src/quickcfg.py
+src/fileconfig.egg-info/PKG-INFO
+src/fileconfig.egg-info/SOURCES.txt
+src/fileconfig.egg-info/dependency_links.txt
+src/fileconfig.egg-info/entry_points.txt
+src/fileconfig.egg-info/top_level.txt
