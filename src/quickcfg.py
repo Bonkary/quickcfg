@@ -3,6 +3,8 @@
 import os
 import argparse
 import sys
+import shutil
+import subprocess
 
 
 class VariableNotFound(Exception):
@@ -19,13 +21,15 @@ parser = argparse.ArgumentParser(
 parser.add_argument("filepath", type=str, help="The path to the config file.")
 parser.add_argument('variable', type=str, help="The variable to replace.")
 parser.add_argument('value', type=str, help="The new value.")
+
 args = parser.parse_args()
 
 def main():
     if os.path.exists(args.filepath):
-        matching = []
+        matching: list[tuple[int,str]] = []
         with open(args.filepath, 'r+') as cfgFile:
             oldData = cfgFile.readlines()
+            oldData = [line.replace("\n", '') for line in oldData]
             for line in oldData:
                 if args.variable in line:
                     index = oldData.index(line)
@@ -39,7 +43,7 @@ def main():
                 if len(matching) > 1:
                     raise TooManyMatches()
                 else:
-                    oldLine = matching[-1][1]
+                    oldLine = matching[-1][1].strip()
                     index = matching[-1][0]
 
             if oldLine:
@@ -51,6 +55,21 @@ def main():
                 print("Failed to find variable")
                 sys.exit(1)
 
+        if oldLine == newLine:
+            print("Thats already the existing value!")
+            sys.exit(1)
+        
+        print(f"Current line: {oldLine}")
+        print(f"    New line: {newLine}")
+        choice = input("Continue?(Y/n): ")
+        if not choice == 'y':
+            print("Exiting...")
+            sys.exit(0)
+        
+        print("Creating backup file...")
+        shutil.copy(args.filepath, args.filepath+".bak")
+        
+        print("Updating file...")
         with open(args.filepath, 'w+') as cfgFile:
             newData = oldData.copy()
             newData[index] = newLine
@@ -62,11 +81,30 @@ def main():
             newLines = cfgFile.readlines()
             if newLine+"\n" in newLines:
                 print("Replaced successfully!")
+                keepBak = input("Keep the backup file?(Y/n): ")
+                if not keepBak == 'y':
+                    os.remove(args.filepath+'.bak')
+                else:
+                    print(f"Backup will remain: {args.filepath+".bak"}")
                 sys.exit(0)
                 
-        print("Failed to write data. Restoring previous...")
-        with open(args.filepath, 'w') as cfgFile:
-            cfgFile.writelines(oldData)
+        print("Failed to replace line. Restoring previous...")
+        shutil.copy(args.filepath+".bak", args.filepath)
+        with open(args.filepath, 'r') as cfgFile:
+            data = cfgFile.readlines()
+            if oldLine in data:
+                print("Restored successfully!")
+            else:
+                print(f"I got some really bad news... Backup seems to have failed.")
+                choice = input("Would you like to open the file?(Y/n): ").lower()
+                if choice == 'y':
+                    subprocess.run(['sudo', 'nano', args.filepath])
+                else:
+                    print("Exiting...")
+                    sys.exit(1)
+    else:
+        print("Failed to find the file.")
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
